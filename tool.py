@@ -1,4 +1,8 @@
 from collections import defaultdict
+from sqlalchemy import Column, Integer, String
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 main_menu = """1. Add flashcards
 2. Practice flashcards
@@ -6,7 +10,21 @@ main_menu = """1. Add flashcards
 sub_menu = """1. Add a new flashcard
 2. Exit"""
 
-flashcards = []
+
+engine = create_engine("sqlite:///flashcard.db?check_same_thread=False")
+Base = declarative_base()
+
+
+class Flashcard(Base):
+    __tablename__ = "flashcard"
+    id = Column(Integer, primary_key=True)
+    question = Column(String)
+    answer = Column(String)
+
+
+Base.metadata.create_all(engine)
+Session = sessionmaker(bind=engine)
+session = Session()
 
 
 def display_main_menu():
@@ -40,7 +58,9 @@ def add_flashcards():
                     break
             flashcard["question"] = question
             flashcard["answer"] = answer
-            flashcards.append(flashcard)
+            session.add(Flashcard(question=question, answer=answer))
+            session.commit()
+        #           flashcards.append(flashcard)
         else:
             print(f"{sub_selection} is not an option")
         print()
@@ -48,13 +68,14 @@ def add_flashcards():
 
 
 def practice_flashcards():
-    if flashcards:
+    flashcards = session.query(Flashcard).all()
+    if flashcards is not None:
         for flashcard in flashcards:
-            print(f'Question: {flashcard["question"]}')
+            print(f"Question: {flashcard.question}")
             print('Please press "y" to see the answer or press "n" to skip:')
             if input() == "y":
                 print()
-                print(f'Answer: {flashcard["answer"]}')
+                print(f"Answer: {flashcard.answer}")
                 print()
     else:
         print("There is no flashcard to practice!")
