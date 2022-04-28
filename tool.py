@@ -72,11 +72,50 @@ def practice_flashcards():
     if flashcards is not None:
         for flashcard in flashcards:
             print(f"Question: {flashcard.question}")
-            print('Please press "y" to see the answer or press "n" to skip:')
-            if input() == "y":
-                print()
-                print(f"Answer: {flashcard.answer}")
-                print()
+            while True:
+                print('press "y" to see the answer:')
+                print('press "n" to skip:')
+                print('press "u" to update:')
+                practice_input = input()
+                if practice_input in ("y", "n", "u"):
+                    if practice_input == "y":
+                        print(f"Answer: {flashcard.answer}")
+                    elif practice_input == "n":
+                        return
+                    elif practice_input == "u":
+                        query_ = session.query(Flashcard).filter(
+                            Flashcard.question == flashcard.question
+                        )
+                        while True:
+                            print('press "d" to delete the flashcard:')
+                            print('press "e" to edit the flashcard:')
+                            update_input = input()
+                            if update_input in ("e", "d"):
+                                if update_input == "e":
+                                    print()
+                                    print(f"current question: {flashcard.question}")
+                                    print("please write a new question:")
+                                    new_question = input()
+
+                                    print()
+                                    print(f"current answer: {flashcard.answer}")
+                                    print("please write a new answer:")
+                                    new_answer = input()
+
+                                    query_.update(
+                                        {"question": new_question, "answer": new_answer}
+                                    )
+                                    session.commit()
+                                    break
+                                elif update_input == "d":
+                                    query_.delete()
+                                    break
+                            else:
+                                print(update_input, "is not an option")
+                    break
+                else:
+                    print(practice_input, "is not an option")
+            print()
     else:
         print("There is no flashcard to practice!")
 
