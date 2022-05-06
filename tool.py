@@ -10,7 +10,6 @@ main_menu = """1. Add flashcards
 sub_menu = """1. Add a new flashcard
 2. Exit"""
 
-
 engine = create_engine("sqlite:///flashcard.db?check_same_thread=False")
 Base = declarative_base()
 
@@ -20,6 +19,7 @@ class Flashcard(Base):
     id = Column(Integer, primary_key=True)
     question = Column(String)
     answer = Column(String)
+    box_number = Column(Integer, default=1)
 
 
 Base.metadata.create_all(engine)
@@ -60,7 +60,6 @@ def add_flashcards():
             flashcard["answer"] = answer
             session.add(Flashcard(question=question, answer=answer))
             session.commit()
-        #           flashcards.append(flashcard)
         else:
             print(f"{sub_selection} is not an option")
         print()
@@ -68,9 +67,20 @@ def add_flashcards():
 
 
 def practice_flashcards():
-    flashcards = session.query(Flashcard).all()
-    if flashcards is not None:
+    flashcards = (
+        (
+            session.query(Flashcard)
+            .filter(Flashcard.box_number >= 1)
+            .filter(Flashcard.box_number <= 3)
+        )
+        .order_by(Flashcard.box_number.desc())
+        .all()
+    )
+    if bool(flashcards):
         for flashcard in flashcards:
+            current_flashcard = session.query(Flashcard).filter(
+                Flashcard.question == flashcard.question
+            )
             print(f"Question: {flashcard.question}")
             while True:
                 print('press "y" to see the answer:')
@@ -80,12 +90,28 @@ def practice_flashcards():
                 if practice_input in ("y", "n", "u"):
                     if practice_input == "y":
                         print(f"Answer: {flashcard.answer}")
+                        while True:
+                            print('press "y" if your answer is correct:')
+                            print('press "n" if your answer is wrong:')
+                            leitner_input = input()
+                            if leitner_input in ("y", "n"):
+                                if leitner_input == "y":
+                                    current_flashcard.update(
+                                        {"box_number": Flashcard.box_number + 1}
+                                    )
+                                elif leitner_input == "n":
+                                    current_flashcard.update({"box_number": 1})
+                                session.commit()
+                                if current_flashcard.first().box_number > 3:
+                                    current_flashcard.delete()
+                                    session.commit()
+                                break
+                            else:
+                                print(leitner_input, "is not an option")
                     elif practice_input == "n":
                         return
                     elif practice_input == "u":
-                        query_ = session.query(Flashcard).filter(
-                            Flashcard.question == flashcard.question
-                        )
+
                         while True:
                             print('press "d" to delete the flashcard:')
                             print('press "e" to edit the flashcard:')
@@ -102,13 +128,13 @@ def practice_flashcards():
                                     print("please write a new answer:")
                                     new_answer = input()
 
-                                    query_.update(
+                                    current_flashcard.update(
                                         {"question": new_question, "answer": new_answer}
                                     )
                                     session.commit()
                                     break
                                 elif update_input == "d":
-                                    query_.delete()
+                                    current_flashcard.delete()
                                     break
                             else:
                                 print(update_input, "is not an option")
